@@ -405,7 +405,7 @@ Conventions (set up in Phase 1, then keep):
 - Assert observable behavior. Do not write `expect(true).toBe(true)`. Name tests so a failure message explains what broke.
 - Pin `vitest.config.mts` to `pool: "threads"` (the default `forks` pool has timed out on this machine). Do not switch the suite to `@cloudflare/vitest-pool-workers`.
 
-### Phase 1: Database Foundation - IN PROGRESS
+### Phase 1: Database Foundation - COMPLETED
 
 **Objective**: Vitest can run, D1 is bound as `DB`, `getDb()` can return that binding, tests have a D1 fake, and the local database has a `users` table.
 
@@ -481,7 +481,7 @@ Add `vitest.config.mts` (ESM, `vite-tsconfig-paths`, `environment: "node"`, `glo
 - `migrations/0001_create_users_table.sql` and `migrations/0001_create_users_table.test.ts`
 - Local `users` table ready for the service layer
 
-### Phase 2: User Service - PLANNED
+### Phase 2: User Service - READY FOR REVIEW
 
 **Objective**: Server code can create, read, update, and delete users, and can verify a login against a hashed password. No HTTP and no pages yet.
 
@@ -558,14 +558,14 @@ Run `npm test`. These tests must fail (missing modules or failing assertions). T
 
 **Done when**:
 
-- [ ] Phase 2 Vitest tests were observed failing, then passing
-- [ ] `npm test` is green
-- [ ] `createUser` / `getUserById` / `updateUser` / `deleteUser` each have a passing test
-- [ ] `verifyCredentials` succeeds for a matching password and returns `null` for both a wrong password and an unknown identifier
-- [ ] Stored `password_hash` is neither the plaintext nor the transport hash
-- [ ] Two users with the same password get different salts and different hashes
-- [ ] Duplicate username or email (including case-only differences after normalization) throws `UserConflictError`
-- [ ] `User` objects returned by the service never include hash, salt, or iteration fields
+- [x] Phase 2 Vitest tests were observed failing, then passing
+- [x] `npm test` is green (41 tests)
+- [x] `createUser` / `getUserById` / `updateUser` / `deleteUser` each have a passing test
+- [x] `verifyCredentials` succeeds for a matching password and returns `null` for both a wrong password and an unknown identifier
+- [x] Stored `password_hash` is neither the plaintext nor the transport hash
+- [x] Two users with the same password get different salts and different hashes
+- [x] Duplicate username or email (including case-only differences after normalization) throws `UserConflictError`
+- [x] `User` objects returned by the service never include hash, salt, or iteration fields
 
 **Deliverables**:
 
@@ -1090,21 +1090,18 @@ When working from this PRD:
 ## Current Status
 
 **Last Updated**: 2026-08-28
-**Current Phase**: Phase 1 - Database Foundation
+**Current Phase**: Phase 2 - User Service
 **Status**: READY FOR REVIEW
-**Next Steps**: Review Phase 1. Local `wrangler d1 migrations apply --local` is blocked by a workerd access violation on this Windows machine. After review, say when to start Phase 2.
+**Next Steps**: Review Phase 2. Do not start Phase 3 until you say so. No commit or push until you ask.
 
-**Phase 1 delivered:**
+**Phase 2 delivered (uncommitted):**
 
-- Vitest harness (`npm test` — 14 passing)
-- `DB` binding in `wrangler.jsonc` (`ai-sprint-quiz-db`)
-- `src/lib/db.ts` / `src/lib/db.test.ts`
-- `src/test-support/fake-d1.ts` / `src/test-support/fake-d1.test.ts`
-- `migrations/0001_create_users_table.sql` and its schema contract tests
+- `src/lib/client-password.ts` and `src/lib/password.ts`
+- `src/lib/validation/auth-schemas.ts`
+- `src/lib/services/user-service.ts` (create, read, update, delete, verifyCredentials)
+- Colocated Vitest files; `npm test` is 41 green
 
-**Still open on Phase 1:**
-
-- Local D1 apply (`migrations list --local`) — workerd crash; not applied remotely
+**Still not doing this session:** migrations, production deploys, or a Phase 2 commit until you review.
 
 **Open question for the user:**
 
