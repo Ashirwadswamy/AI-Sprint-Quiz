@@ -29,6 +29,7 @@
     },
     "types": [
       "./cloudflare-env.d.ts",
+      "./cloudflare-env-bindings.d.ts",
       "node"
     ]
   },
