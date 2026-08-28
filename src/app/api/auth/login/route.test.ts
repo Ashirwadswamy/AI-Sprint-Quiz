@@ -37,6 +37,7 @@ function post(body: unknown) {
 
 describe("POST /api/auth/login", () => {
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
 	});
 
@@ -103,6 +104,7 @@ describe("POST /api/auth/login", () => {
 	});
 
 	it("returns 500 without leaking the thrown message", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		vi.mocked(verifyCredentials).mockRejectedValue(new Error("secret connection string"));
 
 		const response = await post({ identifier: "ada.lovelace", passwordHash });

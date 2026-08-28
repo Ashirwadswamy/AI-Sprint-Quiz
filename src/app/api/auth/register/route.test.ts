@@ -45,6 +45,7 @@ function post(body: unknown) {
 
 describe("POST /api/auth/register", () => {
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
 	});
 
@@ -114,6 +115,7 @@ describe("POST /api/auth/register", () => {
 	});
 
 	it("returns 500 without leaking the thrown message", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
 		vi.mocked(createUser).mockRejectedValue(new Error("secret connection string"));
 
 		const response = await post(validBody);

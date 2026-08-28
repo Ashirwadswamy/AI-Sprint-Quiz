@@ -650,7 +650,7 @@ Run `npm test`. These tests must fail. Then implement.
 - `src/app/api/auth/login/route.ts` and `route.test.ts`
 - `src/app/api/auth/logout/route.ts` and `route.test.ts`
 
-### Phase 4: Pages and End-to-End Flow - PLANNED
+### Phase 4: Pages and End-to-End Flow - READY FOR REVIEW
 
 **Objective**: A teacher can register, land on the MCQ stub, log out, and log back in through the browser. Question-bank features are still a stub.
 
@@ -708,15 +708,15 @@ Run `npm test`. These tests must fail. Then implement the components and pages u
 
 **Done when**:
 
-- [ ] Phase 4 Vitest tests were observed failing, then passing
-- [ ] `npm test` is green for the full suite
+- [x] Phase 4 Vitest tests were observed failing, then passing
+- [x] `npm test` is green for the full suite (73 tests)
 - [ ] Browser network panel shows `passwordHash` (64 hex chars) and never a plaintext password
 - [ ] Register → `/questions` → logout → `/login` → login → `/questions` works under `npm run preview`
-- [ ] Logout uses `replace`, so back does not return to `/questions`
-- [ ] Duplicate register shows the error on the conflicting field
+- [x] Logout uses `replace` (unit test: `router.replace("/login")` even when fetch fails)
+- [x] Duplicate register shows the error on the conflicting field (unit test)
 - [ ] A local query of `users` shows no plaintext and no bare transport hash
-- [ ] `npm run lint` and `npm run build` succeed
-- [ ] Remaining Acceptance Criteria checkboxes are marked only after observing the behavior
+- [x] `npm run lint` and `npm run build` succeed
+- [ ] Remaining Acceptance Criteria checkboxes are marked only after observing the behavior in preview/browser
 
 **Deliverables**:
 
@@ -756,15 +756,15 @@ Run `npm test`. These tests must fail. Then implement the components and pages u
 | `src/app/api/auth/login/route.test.ts`       | Vitest: 200 / 400 / 401 / 500                                              | Create in Phase 3 (write first) |
 | `src/app/api/auth/logout/route.ts`           | Logout endpoint                                                            | Create in Phase 3               |
 | `src/app/api/auth/logout/route.test.ts`      | Vitest: 200, no user-service call                                          | Create in Phase 3 (write first) |
-| `src/app/register/page.tsx`                  | Registration page                                                          | Create in Phase 4               |
-| `src/app/login/page.tsx`                     | Login page                                                                 | Create in Phase 4               |
-| `src/app/questions/page.tsx`                 | Post-auth stub, filled in next sprint                                      | Create in Phase 4               |
-| `src/components/auth/RegisterForm.tsx`       | Client registration form                                                   | Create in Phase 4               |
-| `src/components/auth/RegisterForm.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Create in Phase 4 (write first) |
-| `src/components/auth/LoginForm.tsx`          | Client login form                                                          | Create in Phase 4               |
-| `src/components/auth/LoginForm.test.tsx`     | Vitest + Testing Library (jsdom)                                           | Create in Phase 4 (write first) |
-| `src/components/auth/LogoutButton.tsx`       | Client logout control                                                      | Create in Phase 4               |
-| `src/components/auth/LogoutButton.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Create in Phase 4 (write first) |
+| `src/app/register/page.tsx`                  | Registration page                                                          | Created in Phase 4              |
+| `src/app/login/page.tsx`                     | Login page                                                                 | Created in Phase 4              |
+| `src/app/questions/page.tsx`                 | Post-auth stub, filled in next sprint                                      | Created in Phase 4              |
+| `src/components/auth/RegisterForm.tsx`       | Client registration form                                                   | Created in Phase 4              |
+| `src/components/auth/RegisterForm.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
+| `src/components/auth/LoginForm.tsx`          | Client login form                                                          | Created in Phase 4              |
+| `src/components/auth/LoginForm.test.tsx`     | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
+| `src/components/auth/LogoutButton.tsx`       | Client logout control                                                      | Created in Phase 4              |
+| `src/components/auth/LogoutButton.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
 
 
 ### Implementation Patterns
@@ -912,9 +912,9 @@ Route-handler tests call `POST` with a `Request` and mock the service. Component
 - [ ] The user service supports create, read, update, and delete, each exercised at least once by tests
 - [ ] Updating a user's password regenerates the salt and the old password no longer authenticates
 - [ ] Each phase's Vitest tests were written first, observed failing, then made green before that phase was marked COMPLETED
-- [ ] `npm test` passes (full Vitest suite)
-- [ ] `npm run lint` passes
-- [ ] `npm run build` succeeds
+- [x] `npm test` passes (full Vitest suite) — 73 tests
+- [x] `npm run lint` passes (exit 0; 3 pre-existing unused-var warnings in Phase 2/3 tests)
+- [x] `npm run build` succeeds
 - [ ] The full register → land → logout → login flow works under `npm run preview` on the Workers runtime
 - [ ] Login response time stays under 1 second locally, and PBKDF2 CPU time is within the Cloudflare plan's per-request limit
 
@@ -1090,19 +1090,19 @@ When working from this PRD:
 ## Current Status
 
 **Last Updated**: 2026-08-28
-**Current Phase**: Phase 3 - Register, Login, Logout Endpoints
+**Current Phase**: Phase 4 - Pages and End-to-End Flow
 **Status**: READY FOR REVIEW
-**Next Steps**: Review Phase 3. Do not start Phase 4 until you say so. No commit or push until you ask.
+**Next Steps**: Preview/browser verification still outstanding. No production deploy or new migrations from this session.
 
-**Phase 3 delivered (uncommitted):**
+**Phase 4 delivered:**
 
-- `POST /api/auth/register`, `/login`, `/logout`
-- Shared public-user / field-error helpers
-- Route tests; `npm test` is 59 green
+- `RegisterForm`, `LoginForm`, `LogoutButton` plus jsdom tests
+- `/register`, `/login`, `/questions` stub; `/` redirects to `/login`
+- Layout title/description set to QuizMaker
+- `npm test` 73 green; `npm run lint` exit 0; `npm run build` succeeded
+- jsdom component tests run in the forks pool so workers do not hang on this machine
 
-**Still not doing this session:** migrations, production deploys, or a Phase 3 commit until you review.
+**Preview not verified on this machine:** `npm run preview` failed with `EPERM` deleting `.open-next` (directory locked by another process). No `--remote` migration and no production deploy were attempted.
 
-**Open question for the user:**
-
-1. Is this project on the Cloudflare Workers free plan or paid? The answer determines whether 100,000 PBKDF2 iterations fits the per-request CPU budget, or whether the count must be lowered during Phase 4.
+**Not measured:** PBKDF2 CPU time under Workers — preview did not start, so iteration count is still 100000.
 
