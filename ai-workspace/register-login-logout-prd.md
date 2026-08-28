@@ -481,7 +481,7 @@ Add `vitest.config.mts` (ESM, `vite-tsconfig-paths`, `environment: "node"`, `glo
 - `migrations/0001_create_users_table.sql` and `migrations/0001_create_users_table.test.ts`
 - Local `users` table ready for the service layer
 
-### Phase 2: User Service - READY FOR REVIEW
+### Phase 2: User Service - COMPLETED
 
 **Objective**: Server code can create, read, update, and delete users, and can verify a login against a hashed password. No HTTP and no pages yet.
 
@@ -574,7 +574,7 @@ Run `npm test`. These tests must fail (missing modules or failing assertions). T
 - `src/lib/validation/auth-schemas.ts`
 - Colocated `*.test.ts` files listed above, all passing
 
-### Phase 3: Register, Login, Logout Endpoints - PLANNED
+### Phase 3: Register, Login, Logout Endpoints - READY FOR REVIEW
 
 **Objective**: The three HTTP POST endpoints exist, validate input, and use the user service. Register and login are the only endpoints that read or write users.
 
@@ -633,16 +633,16 @@ Run `npm test`. These tests must fail. Then implement.
 
 **Done when**:
 
-- [ ] Phase 3 Vitest tests were observed failing, then passing
-- [ ] `npm test` is green
-- [ ] Register with a valid body returns 201 and a user without credential fields
-- [ ] Register with a duplicate username or email returns 409
-- [ ] Register with a missing field or a `passwordHash` that is not 64 hex characters returns 400
-- [ ] Login succeeds with username or with email
-- [ ] Login failure always returns 401 `Invalid username or password`
-- [ ] Logout returns 200
-- [ ] No endpoint accepts a plaintext `password` field
-- [ ] No endpoint returns `password_hash`, `password_salt`, or `password_iterations`
+- [x] Phase 3 Vitest tests were observed failing, then passing
+- [x] `npm test` is green (59 tests)
+- [x] Register with a valid body returns 201 and a user without credential fields
+- [x] Register with a duplicate username or email returns 409
+- [x] Register with a missing field or a `passwordHash` that is not 64 hex characters returns 400
+- [x] Login succeeds with username or with email
+- [x] Login failure always returns 401 `Invalid username or password`
+- [x] Logout returns 200
+- [x] No endpoint accepts a plaintext `password` field
+- [x] No endpoint returns `password_hash`, `password_salt`, or `password_iterations`
 
 **Deliverables**:
 
@@ -1090,18 +1090,17 @@ When working from this PRD:
 ## Current Status
 
 **Last Updated**: 2026-08-28
-**Current Phase**: Phase 2 - User Service
+**Current Phase**: Phase 3 - Register, Login, Logout Endpoints
 **Status**: READY FOR REVIEW
-**Next Steps**: Review Phase 2. Do not start Phase 3 until you say so. No commit or push until you ask.
+**Next Steps**: Review Phase 3. Do not start Phase 4 until you say so. No commit or push until you ask.
 
-**Phase 2 delivered (uncommitted):**
+**Phase 3 delivered (uncommitted):**
 
-- `src/lib/client-password.ts` and `src/lib/password.ts`
-- `src/lib/validation/auth-schemas.ts`
-- `src/lib/services/user-service.ts` (create, read, update, delete, verifyCredentials)
-- Colocated Vitest files; `npm test` is 41 green
+- `POST /api/auth/register`, `/login`, `/logout`
+- Shared public-user / field-error helpers
+- Route tests; `npm test` is 59 green
 
-**Still not doing this session:** migrations, production deploys, or a Phase 2 commit until you review.
+**Still not doing this session:** migrations, production deploys, or a Phase 3 commit until you review.
 
 **Open question for the user:**
 
