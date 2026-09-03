@@ -1,0 +1,40 @@
+---
+description: After each PRD implementation phase, get user approval then commit and push the current branch
+alwaysApply: true
+---
+
+# Phase Gate: Approve, Commit, Push
+
+When implementing work from a technical PRD that is broken into phases (for example
+`ai-workspace/*-prd.md`), treat each phase as a delivery boundary.
+
+## Required sequence
+
+1. **Finish the phase.** Mark the phase COMPLETED in the PRD only after that phase's
+   Done when / acceptance checks are met (tests green, deliverables in place).
+2. **Stop and ask.** Do **not** start the next phase yet. Tell the user the phase is
+   done, summarize what landed, and ask them to verify and approve.
+3. **Wait for approval.** Only after the user explicitly approves (for example
+   "looks good", "verified", "commit and push") may you commit.
+4. **Commit.** Stage only that phase's files. Use the repo's commit style
+   (imperative, often `Add Phase N …`). Follow the project's git commit protocol.
+5. **Push.** Push to the **current branch** (`git push -u origin HEAD` if upstream is
+   missing). Do not push to `main`/`master` unless the user asked for that.
+6. **Then continue.** Only after the push succeeds, ask whether to start the next
+   phase — or start it if the user already asked to proceed after the push.
+
+## Do not
+
+- Commit or push a phase before the user has approved it
+- Bundle multiple unfinished phases into one commit
+- Skip the approval ask because the next phase was mentioned earlier in the chat
+- Force-push or amend a pushed commit unless the user explicitly requests it
+
+## Example
+
+```
+✅ Phase 2 complete (service + Zod schemas). Please verify, then say when to
+   commit and push to feature/mcq-curd.
+```
+
+After approval → commit → push → only then begin Phase 3.
