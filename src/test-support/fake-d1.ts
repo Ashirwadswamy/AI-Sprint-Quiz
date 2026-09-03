@@ -74,7 +74,13 @@ export function createFakeD1(): FakeD1 {
 
 	const db = {
 		prepare: (sql: string) => statement(sql, []),
-		batch: () => Promise.reject(new Error("fake-d1: batch() is not implemented")),
+		batch: async (statements: ReturnType<typeof statement>[]) => {
+			const results = [];
+			for (const stmt of statements) {
+				results.push(await stmt.all());
+			}
+			return results;
+		},
 		exec: () => Promise.reject(new Error("fake-d1: exec() is not implemented")),
 		withSession: () => {
 			throw new Error("fake-d1: withSession() is not implemented");

@@ -44,4 +44,62 @@ describe("createFakeD1", () => {
 			error,
 		);
 	});
+
+	it("batch() records every statement in order", async () => {
+		const fake = createFakeD1();
+		const first = fake.db.prepare("INSERT INTO mcqs (id) VALUES (?1)").bind("mcq-1");
+		const second = fake.db.prepare("INSERT INTO mcq_choices (id) VALUES (?1)").bind("choice-1");
+
+		await fake.db.batch([first, second]);
+
+		expect(fake.calls).toEqual([
+			{ sql: "INSERT INTO mcqs (id) VALUES (?1)", params: ["mcq-1"] },
+			{ sql: "INSERT INTO mcq_choices (id) VALUES (?1)", params: ["choice-1"] },
+		]);
+	});
+
+	it("batch() returns one result per statement", async () => {
+		const fake = createFakeD1();
+		fake.queueChanges(1);
+		fake.queueChanges(1);
+
+		const results = await fake.db.batch([
+			fake.db.prepare("INSERT INTO mcqs (id) VALUES (?1)").bind("mcq-1"),
+			fake.db.prepare("INSERT INTO mcq_choices (id) VALUES (?1)").bind("choice-1"),
+		]);
+
+		expect(results).toHaveLength(2);
+		expect(results[0].meta.changes).toBe(1);
+		expect(results[1].meta.changes).toBe(1);
+	});
+
+	it("batch() consumes the queue in order", async () => {
+		const fake = createFakeD1();
+		fake.queueRows([{ id: "mcq-1" }]);
+		fake.queueRows([{ id: "choice-1" }]);
+
+		const results = await fake.db.batch([
+			fake.db.prepare("SELECT * FROM mcqs WHERE id = ?1").bind("mcq-1"),
+			fake.db.prepare("SELECT * FROM mcq_choices WHERE id = ?1").bind("choice-1"),
+		]);
+
+		expect(results[0].results).toEqual([{ id: "mcq-1" }]);
+		expect(results[1].results).toEqual([{ id: "choice-1" }]);
+	});
+
+	it("queueError rejects the whole batch and does not resolve later statements", async () => {
+		const fake = createFakeD1();
+		const error = new Error("FOREIGN KEY constraint failed");
+		fake.queueError(error);
+		fake.queueRows([{ id: "choice-1" }]);
+
+		await expect(
+			fake.db.batch([
+				fake.db.prepare("INSERT INTO mcqs (id) VALUES (?1)").bind("mcq-1"),
+				fake.db.prepare("INSERT INTO mcq_choices (id) VALUES (?1)").bind("choice-1"),
+			]),
+		).rejects.toBe(error);
+
+		expect(fake.calls).toEqual([{ sql: "INSERT INTO mcqs (id) VALUES (?1)", params: ["mcq-1"] }]);
+	});
 });
