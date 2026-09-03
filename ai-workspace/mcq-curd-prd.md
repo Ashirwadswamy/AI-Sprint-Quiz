@@ -557,7 +557,7 @@ Run `npm test`. These must fail. Then implement.
 - `src/app/api/mcqs/route.ts` and `route.test.ts`
 - `src/app/api/mcqs/[id]/route.ts` and `route.test.ts`
 
-### Phase 4: Pages and Components - PLANNED
+### Phase 4: Pages and Components - COMPLETED
 
 **Objective**: A teacher can see every question in a table, create one, edit one, and delete one through the browser.
 
@@ -620,13 +620,13 @@ Run `npm test`. These must fail. Then implement.
 
 **Done when**:
 
-- [ ] Phase 4 Vitest tests were observed failing, then passing
-- [ ] `npm test` is green for the full suite
-- [ ] `/questions` lists every question with Name, Description, and Actions
-- [ ] The three-dot menu opens and offers Edit and Delete Multiple Choice Question
-- [ ] Create, Save, Cancel, Edit, and Delete each behave as specified in unit tests
-- [ ] The form cannot be driven below two or above six choices
-- [ ] `npm run lint` and `npm run build` succeed
+- [x] Phase 4 Vitest tests were observed failing, then passing
+- [x] `npm test` is green for the full suite
+- [x] `/questions` lists every question with Name, Description, and Actions
+- [x] The three-dot menu opens and offers Edit and Delete Multiple Choice Question
+- [x] Create, Save, Cancel, Edit, and Delete each behave as specified in unit tests
+- [x] The form cannot be driven below two or above six choices
+- [x] `npm run lint` and `npm run build` succeed
 
 **Deliverables**:
 
@@ -679,12 +679,12 @@ Run `npm test`. These must fail. Then implement.
 | `src/lib/services/mcq-service.test.ts`          | Vitest: CRUD using `createFakeD1()`                           | Created in Phase 2 (wrote first) |
 | `src/app/api/mcqs/route.ts`                     | `GET` list, `POST` create                                     | Created in Phase 3  |
 | `src/app/api/mcqs/[id]/route.ts`                | `GET` one, `PUT` update, `DELETE` remove                      | Created in Phase 3  |
-| `src/app/questions/page.tsx`                    | Question bank list; replaces the stub                         | Phase 4             |
-| `src/app/questions/new/page.tsx`                | Create page                                                   | Phase 4             |
-| `src/app/questions/[id]/edit/page.tsx`          | Edit page; `notFound()` on a missing id                       | Phase 4             |
-| `src/components/mcq/McqTable.tsx`               | Client table with the three-dot Action menu                   | Phase 4             |
-| `src/components/mcq/DeleteMcqDialog.tsx`        | Delete confirmation                                           | Phase 4             |
-| `src/components/mcq/McqForm.tsx`                | Shared create/edit form with the choice editor                | Phase 4             |
+| `src/app/questions/page.tsx`                    | Question bank list; replaces the stub                         | Created in Phase 4  |
+| `src/app/questions/new/page.tsx`                | Create page                                                   | Created in Phase 4  |
+| `src/app/questions/[id]/edit/page.tsx`          | Edit page; `notFound()` on a missing id                       | Created in Phase 4  |
+| `src/components/mcq/McqTable.tsx`               | Client table with the three-dot Action menu                   | Created in Phase 4  |
+| `src/components/mcq/DeleteMcqDialog.tsx`        | Delete confirmation                                           | Created in Phase 4  |
+| `src/components/mcq/McqForm.tsx`                | Shared create/edit form with the choice editor                | Created in Phase 4  |
 
 ### Implementation Patterns
 
@@ -1027,9 +1027,42 @@ When working from this PRD:
 ## Current Status
 
 **Last Updated**: 2026-09-03
-**Current Phase**: Phase 3 - MCQ Endpoints
+**Current Phase**: Phase 4 - Pages and Components
 **Status**: COMPLETED (awaiting user approval to commit and push)
-**Next Steps**: User verifies Phase 3, then approve commit/push to `feature/mcq-curd`. Phase 4 starts only after that push.
+**Next Steps**: User verifies Phase 4, then approve commit/push to `feature/mcq-curd`. Phase 5 (Workers preview) starts only after that push.
+
+**Phase 4 delivered:**
+
+- `McqTable` with Name / Description / Actions, empty state, and three-dot Edit/Delete menu
+- `DeleteMcqDialog` with confirmation, DELETE, refresh on success, inline error on failure
+- Shared `McqForm` for create and edit (2–6 choices, Save/Cancel)
+- `/questions`, `/questions/new`, `/questions/[id]/edit`
+- Vitest: 26 Phase 4 component tests green; node 119 + auth jsdom 14 green
+- `npm run lint` exit 0 (warnings only); `npm run build` succeeded
+
+**Phase 3 delivered:**
+
+- `GET`/`POST` `/api/mcqs` and `GET`/`PUT`/`DELETE` `/api/mcqs/[id]`
+- Zod validation via `createMcqSchema` / `updateMcqSchema`; `toFieldErrors` reused
+- Dynamic route handlers await `params`; 404 for missing ids; 500 messages do not leak internals
+- Vitest: 21 Phase 3 tests observed red (missing route modules), then green; full node suite green
+
+**Phase 2 delivered:**
+
+- `src/lib/validation/mcq-schemas.ts` with `createMcqSchema` / `updateMcqSchema` (2–6 choices, exactly one correct)
+- `src/lib/services/mcq-service.ts` with `createMcq`, `getMcqById`, `listMcqs`, `updateMcq`, `deleteMcq`
+- Creates and choice replacements use `db.batch()`; `is_correct` maps to a boolean; empty description stores `NULL`
+- Vitest: Phase 2 tests observed red (missing modules), then green — 26 new tests; node + jsdom suites still green
+
+**Phase 1 delivered:**
+
+- `createFakeD1().db.batch()` records statements, returns one result per statement, consumes the queue in order, and rejects the whole batch on `queueError`
+- `migrations/0002_create_mcq_tables.sql` creates `mcqs`, `mcq_choices`, and `mcq_attempts`
+- Local apply succeeded; `sqlite_master` contains `users`, `mcqs`, `mcq_choices`, and `mcq_attempts`
+- `src/components/ui/dropdown-menu.tsx` generated by shadcn; no new npm dependency
+- Vitest: 13 Phase 1 tests observed red, then green. Node project 72 passed; jsdom project 14 passed (86 total, including the original 73)
+
+**Still not doing from this close-out:** `npm run deploy`, or applying a migration with `--remote`.
 
 **Phase 3 delivered:**
 
