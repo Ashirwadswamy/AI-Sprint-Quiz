@@ -494,7 +494,7 @@ Run `npm test`. These must fail. Then implement.
 - `src/lib/validation/mcq-schemas.ts` and `mcq-schemas.test.ts`
 - `src/lib/services/mcq-service.ts` and `mcq-service.test.ts`
 
-### Phase 3: MCQ Endpoints - PLANNED
+### Phase 3: MCQ Endpoints - COMPLETED
 
 **Objective**: Five HTTP endpoints exist, validate input, and delegate to the MCQ service.
 
@@ -545,12 +545,12 @@ Run `npm test`. These must fail. Then implement.
 
 **Done when**:
 
-- [ ] Phase 3 Vitest tests were observed failing, then passing
-- [ ] `npm test` is green for the whole suite
-- [ ] All five endpoints return their documented success status
-- [ ] An invalid choice count returns 400 with a field message, from both `POST` and `PUT`
-- [ ] A missing id returns 404 from `GET`, `PUT`, and `DELETE`
-- [ ] No handler returns an internal error message to the client
+- [x] Phase 3 Vitest tests were observed failing, then passing
+- [x] `npm test` is green for the whole suite
+- [x] All five endpoints return their documented success status
+- [x] An invalid choice count returns 400 with a field message, from both `POST` and `PUT`
+- [x] A missing id returns 404 from `GET`, `PUT`, and `DELETE`
+- [x] No handler returns an internal error message to the client
 
 **Deliverables**:
 
@@ -677,8 +677,8 @@ Run `npm test`. These must fail. Then implement.
 | `src/lib/validation/mcq-schemas.test.ts`        | Vitest: accept valid bodies, reject invalid choice sets       | Created in Phase 2 (wrote first) |
 | `src/lib/services/mcq-service.ts`               | All SQL against the three MCQ tables                          | Created in Phase 2  |
 | `src/lib/services/mcq-service.test.ts`          | Vitest: CRUD using `createFakeD1()`                           | Created in Phase 2 (wrote first) |
-| `src/app/api/mcqs/route.ts`                     | `GET` list, `POST` create                                     | Phase 3             |
-| `src/app/api/mcqs/[id]/route.ts`                | `GET` one, `PUT` update, `DELETE` remove                      | Phase 3             |
+| `src/app/api/mcqs/route.ts`                     | `GET` list, `POST` create                                     | Created in Phase 3  |
+| `src/app/api/mcqs/[id]/route.ts`                | `GET` one, `PUT` update, `DELETE` remove                      | Created in Phase 3  |
 | `src/app/questions/page.tsx`                    | Question bank list; replaces the stub                         | Phase 4             |
 | `src/app/questions/new/page.tsx`                | Create page                                                   | Phase 4             |
 | `src/app/questions/[id]/edit/page.tsx`          | Edit page; `notFound()` on a missing id                       | Phase 4             |
@@ -1028,8 +1028,15 @@ When working from this PRD:
 
 **Last Updated**: 2026-09-03
 **Current Phase**: Phase 3 - MCQ Endpoints
-**Status**: PLANNED
-**Next Steps**: Write the `/api/mcqs` and `/api/mcqs/[id]` route tests, observe them fail, then implement the five handlers.
+**Status**: COMPLETED (awaiting user approval to commit and push)
+**Next Steps**: User verifies Phase 3, then approve commit/push to `feature/mcq-curd`. Phase 4 starts only after that push.
+
+**Phase 3 delivered:**
+
+- `GET`/`POST` `/api/mcqs` and `GET`/`PUT`/`DELETE` `/api/mcqs/[id]`
+- Zod validation via `createMcqSchema` / `updateMcqSchema`; `toFieldErrors` reused
+- Dynamic route handlers await `params`; 404 for missing ids; 500 messages do not leak internals
+- Vitest: 21 Phase 3 tests observed red (missing route modules), then green; full node suite green
 
 **Phase 2 delivered:**
 
