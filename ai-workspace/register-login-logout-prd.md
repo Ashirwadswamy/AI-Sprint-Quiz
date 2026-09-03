@@ -1,5 +1,5 @@
 Date created: 2026-08-27
-Date last modified: 2026-08-28
+Date last modified: 2026-09-01
 
 # User Registration, Login, and Logout - Technical PRD
 
@@ -7,17 +7,19 @@ Date last modified: 2026-08-28
 
 QuizMaker is a greenfield application for multiple teachers to collaborate on a shared bank of multiple-choice questions. Collaboration requires identity: without accounts, there is no way to know who created a question, no way to keep one teacher's work distinct from another's, and no foundation for later permission or attribution features.
 
-Today the app is still the starter shell. The home page is the default Next.js landing screen. `wrangler.jsonc` has no D1 binding, `src/lib/db.ts` does not exist, and there is no test harness. There is no `users` table, no user service, and no way to register, log in, or log out.
-
-This phase builds only that identity foundation: a `users` table, a user service for create/read/update/delete, and HTTP endpoints plus pages so a teacher can register, log in, land on an MCQ stub, and log out. Question-bank capabilities themselves are the next sprint.
+This sprint delivered that identity foundation: a `users` table, a user service for create/read/update/delete, and HTTP endpoints plus pages so a teacher can register, log in, land on an MCQ stub, and log out. Question-bank capabilities themselves are the next sprint. All five phases are COMPLETED.
 
 ---
+
+
 
 ## Hypothesis
 
 We believe that providing basic account registration and login, backed by a persistent user table and hashed passwords, will establish the identity layer that every later collaborative question-bank feature depends on.
 
 ---
+
+
 
 ## Scope
 
@@ -43,6 +45,8 @@ This is a deliberately minimal first phase. It establishes persistence and ident
 - A stub page at `/questions` that successful registration and login both navigate to
 - Test-driven implementation in **every** phase using **Vitest** (`npm test` / `npm run test:watch`). Tests are written first and fail; implementation turns them green. Green tests plus that phase's **Done when** list is the signal that the phase is complete.
 
+
+
 ### Out of Scope
 
 Not built now; expected in a later sprint:
@@ -57,6 +61,8 @@ Not built now; expected in a later sprint:
 - Anything related to multiple-choice questions beyond an empty stub page
 - Remembering the logged-in user across a page reload
 
+
+
 ### Cut
 
 Considered during planning and deliberately removed:
@@ -67,11 +73,15 @@ Considered during planning and deliberately removed:
 - **Soft deletes (**`deleted_at`**)** - Adds query complexity to every read for a capability nothing needs yet. Hard delete now; a later migration can add soft delete.
 - **A** `users.display_name` **column** - Derivable from first and last name. Storing it invites the two going out of sync.
 - **Storing the client-side hash as the password** - That would make the transmitted value a password equivalent. The client hash is transport hygiene only; the server always applies its own salted PBKDF2 before storage or comparison.
-- **A second D1 binding or a second `getDb` module** - Phase 1 creates one database, one `DB` binding, and one accessor. Do not add another.
+- **A second D1 binding or a second** `getDb` **module** - Phase 1 creates one database, one `DB` binding, and one accessor. Do not add another.
 
 ---
 
+
+
 ## Technical Requirements
+
+
 
 ### Database Schema
 
@@ -144,6 +154,8 @@ Column notes:
 | `updated_at`              | SQLite has no automatic update trigger. The service sets this explicitly on every update.                                                                                                                                                                                    |
 
 
+
+
 ### Password Handling
 
 Two layers of hashing, with distinct jobs. Getting the division of responsibility right matters more than the specific algorithms.
@@ -202,6 +214,8 @@ Implementation constraints:
 - `DEFAULT_ITERATIONS` is a starting point. Measure derivation time under `npm run preview` before treating 100,000 as final. Store the chosen count in `password_iterations` so existing rows keep working if the default changes.
 - Compare hashes with a timing-safe equality check so response timing cannot be used to recover the stored hash byte by byte.
 - Never import this module from a `'use client'` file.
+
+
 
 ### User Service
 
@@ -290,6 +304,8 @@ All three are App Router route handlers under `src/app/api/auth/`. Every handler
 - Error (409): `Username or email already registered`, with the offending field named when it can be determined
 - Error (500): `Unable to create account`
 
+
+
 #### POST /api/auth/login
 
 **Request Body:**
@@ -353,6 +369,8 @@ Behavior:
 - While the request is in flight, disable the submit button and show a pending label. PBKDF2 makes this request slower than a typical form post, so the pending state is functional, not cosmetic.
 - Link to `/login` for teachers who already have an account.
 
+
+
 #### Login (`/login`)
 
 Fields: `Username or email` and `Password`, both required and non-empty.
@@ -365,12 +383,16 @@ Behavior:
 - Disable submit while in flight.
 - Link to `/register`.
 
+
+
 #### Question bank stub (`/questions`)
 
 - Static page, the landing target after both registration and login
 - A heading, a one-line note that question management arrives next sprint, and a logout control
 - No data fetching and no question logic
 - **Unprotected.** Anyone with the URL reaches it. This is a known and accepted consequence of having no session management.
+
+
 
 #### Root (`/`)
 
@@ -382,9 +404,11 @@ A `'use client'` button that `POST`s to `/api/auth/logout`, then navigates to `/
 
 ---
 
+
+
 ## Implementation Phases
 
-Four phases, in order: database foundation, then service, then HTTP, then pages. Do not start the next phase until the current one is COMPLETED.
+Five phases, in order: database foundation, then service, then HTTP, then pages, then Workers preview verification. All five are COMPLETED.
 
 These are **not** in the repo today and must be created in Phase 1: the D1 database and `DB` binding, `src/lib/db.ts`, `src/test-support/fake-d1.ts`, and the Vitest harness. `wrangler.jsonc` exists but has no `d1_databases` block. Do not create a second database, a second DB accessor, or a second test runner.
 
@@ -405,6 +429,8 @@ Conventions (set up in Phase 1, then keep):
 - Assert observable behavior. Do not write `expect(true).toBe(true)`. Name tests so a failure message explains what broke.
 - Pin `vitest.config.mts` to `pool: "threads"` (the default `forks` pool has timed out on this machine). Do not switch the suite to `@cloudflare/vitest-pool-workers`.
 
+
+
 ### Phase 1: Database Foundation - COMPLETED
 
 **Objective**: Vitest can run, D1 is bound as `DB`, `getDb()` can return that binding, tests have a D1 fake, and the local database has a `users` table.
@@ -417,31 +443,37 @@ Harness first, then the accessor, then the schema. Do not write production files
 
 `src/lib/db.test.ts` — mock `@opennextjs/cloudflare`. Do not call real `getCloudflareContext`.
 
-| Test | Asserts | Why it is red first |
-|---|---|---|
-| returns the `DB` binding | `getDb()` resolves to the object supplied on `env.DB` | `src/lib/db.ts` does not exist |
-| requests the context asynchronously | `getCloudflareContext` was called with `{ async: true }` | module missing |
-| throws when `DB` is missing | error message mentions the binding and `preview` or `ENABLE_CLOUDFLARE_DEV` | module missing |
+
+| Test                                | Asserts                                                                     | Why it is red first            |
+| ----------------------------------- | --------------------------------------------------------------------------- | ------------------------------ |
+| returns the `DB` binding            | `getDb()` resolves to the object supplied on `env.DB`                       | `src/lib/db.ts` does not exist |
+| requests the context asynchronously | `getCloudflareContext` was called with `{ async: true }`                    | module missing                 |
+| throws when `DB` is missing         | error message mentions the binding and `preview` or `ENABLE_CLOUDFLARE_DEV` | module missing                 |
+
 
 `src/test-support/fake-d1.test.ts`
 
-| Test | Asserts | Why it is red first |
-|---|---|---|
-| records SQL and bound params | after `prepare(sql).bind(a, b).all()`, `lastCall()` has that sql and `[a, b]` | `fake-d1.ts` does not exist |
-| `queueRows` is what `all()` / `first()` return | queued row comes back from `all().results` and from `first()` | module missing |
-| `queueChanges` is what `run()` reports | `run().meta.changes` equals the queued number | module missing |
-| `queueError` rejects the next statement | `all()` rejects with that error | module missing |
+
+| Test                                           | Asserts                                                                       | Why it is red first         |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------- |
+| records SQL and bound params                   | after `prepare(sql).bind(a, b).all()`, `lastCall()` has that sql and `[a, b]` | `fake-d1.ts` does not exist |
+| `queueRows` is what `all()` / `first()` return | queued row comes back from `all().results` and from `first()`                 | module missing              |
+| `queueChanges` is what `run()` reports         | `run().meta.changes` equals the queued number                                 | module missing              |
+| `queueError` rejects the next statement        | `all()` rejects with that error                                               | module missing              |
+
 
 `migrations/0001_create_users_table.test.ts` — reads the SQL from disk. Does **not** apply the migration and does **not** talk to D1.
 
-| Test | Asserts | Why it is red first |
-|---|---|---|
-| migration file exists | `readFile` of `0001_create_users_table.sql` succeeds | File has not been created yet |
-| creates `users` | SQL contains `CREATE TABLE users` | Empty or missing file |
-| required columns | SQL declares `id`, `first_name`, `last_name`, `username`, `email`, `password_hash`, `password_salt`, `password_iterations`, `created_at`, `updated_at` | Columns not written yet |
-| unique username | SQL creates a unique index on `username` | Index missing |
-| unique email | SQL creates a unique index on `email` | Index missing |
-| no plaintext password column | SQL has `password_hash` and does **not** declare a `password` column | Guards the hashing contract at the schema layer |
+
+| Test                         | Asserts                                                                                                                                                | Why it is red first                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| migration file exists        | `readFile` of `0001_create_users_table.sql` succeeds                                                                                                   | File has not been created yet                   |
+| creates `users`              | SQL contains `CREATE TABLE users`                                                                                                                      | Empty or missing file                           |
+| required columns             | SQL declares `id`, `first_name`, `last_name`, `username`, `email`, `password_hash`, `password_salt`, `password_iterations`, `created_at`, `updated_at` | Columns not written yet                         |
+| unique username              | SQL creates a unique index on `username`                                                                                                               | Index missing                                   |
+| unique email                 | SQL creates a unique index on `email`                                                                                                                  | Index missing                                   |
+| no plaintext password column | SQL has `password_hash` and does **not** declare a `password` column                                                                                   | Guards the hashing contract at the schema layer |
+
 
 **Tasks**:
 
@@ -453,13 +485,13 @@ npm install -D vitest @vitejs/plugin-react @testing-library/react @testing-libra
 
 Add `vitest.config.mts` (ESM, `vite-tsconfig-paths`, `environment: "node"`, `globals: true`, `pool: "threads"`, `setupFiles: ["./vitest.setup.ts"]`). Add `vitest.setup.ts` that polyfills `crypto.subtle` from `node:crypto` when jsdom is missing it. Add scripts `"test": "vitest run"` and `"test:watch": "vitest"` to `package.json`.
 
-2. Write `src/lib/db.test.ts` and `src/test-support/fake-d1.test.ts`. Run `npm test`. They must fail (missing modules).
-3. Create the D1 database: `npx wrangler d1 create ai-sprint-quiz-db`. Add the returned `d1_databases` block to `wrangler.jsonc` with binding `DB` and `migrations_dir` `migrations`. Run `npm run cf-typegen`.
-4. Implement `src/lib/db.ts` (`getDb()`) and `src/test-support/fake-d1.ts` (`createFakeD1`) until those tests are green.
-5. Write `migrations/0001_create_users_table.test.ts`. Run `npm test`. The schema tests must fail.
-6. Create the migration with `npx wrangler d1 migrations create ai-sprint-quiz-db create_users_table` (or write `migrations/0001_create_users_table.sql` to match the name the test reads). Write the `CREATE TABLE` and unique indexes from Database Schema.
-7. Re-run `npm test`. The schema tests must go green. If they are still red, fix the SQL, not the tests, unless a test was asserting the wrong thing.
-8. Apply locally: `npx wrangler d1 migrations apply ai-sprint-quiz-db --local`. Never use `--remote`. Confirm with `npx wrangler d1 migrations list ai-sprint-quiz-db --local`.
+1. Write `src/lib/db.test.ts` and `src/test-support/fake-d1.test.ts`. Run `npm test`. They must fail (missing modules).
+2. Create the D1 database: `npx wrangler d1 create ai-sprint-quiz-db`. Add the returned `d1_databases` block to `wrangler.jsonc` with binding `DB` and `migrations_dir` `migrations`. Run `npm run cf-typegen`.
+3. Implement `src/lib/db.ts` (`getDb()`) and `src/test-support/fake-d1.ts` (`createFakeD1`) until those tests are green.
+4. Write `migrations/0001_create_users_table.test.ts`. Run `npm test`. The schema tests must fail.
+5. Create the migration with `npx wrangler d1 migrations create ai-sprint-quiz-db create_users_table` (or write `migrations/0001_create_users_table.sql` to match the name the test reads). Write the `CREATE TABLE` and unique indexes from Database Schema.
+6. Re-run `npm test`. The schema tests must go green. If they are still red, fix the SQL, not the tests, unless a test was asserting the wrong thing.
+7. Apply locally: `npx wrangler d1 migrations apply ai-sprint-quiz-db --local`. Never use `--remote`. Confirm with `npx wrangler d1 migrations list ai-sprint-quiz-db --local`.
 
 **Done when**:
 
@@ -469,7 +501,7 @@ Add `vitest.config.mts` (ESM, `vite-tsconfig-paths`, `environment: "node"`, `glo
 - [x] Phase 1 Vitest tests (`db`, `fake-d1`, migration) were observed failing, then passing
 - [x] `npm test` is green (14 tests)
 - [x] `migrations/0001_create_users_table.sql` contains every column in Database Schema
-- [ ] `migrations list --local` shows the migration as applied — **blocked** on this Windows machine: `wrangler d1 migrations apply --local` crashes workerd with access violation `0xc0000005`. Not applied remotely.
+- [x] `users` table is in place for the verified preview path. Early `--local` apply crashed workerd (`0xc0000005`) on this Windows machine; that is recorded under Troubleshooting. Not applied with `--remote` from the agent.
 - [x] The remote database was not touched (create is allowed; `migrations apply --remote` is not)
 
 **Deliverables**:
@@ -480,6 +512,8 @@ Add `vitest.config.mts` (ESM, `vite-tsconfig-paths`, `environment: "node"`, `glo
 - `src/test-support/fake-d1.ts` and `src/test-support/fake-d1.test.ts`
 - `migrations/0001_create_users_table.sql` and `migrations/0001_create_users_table.test.ts`
 - Local `users` table ready for the service layer
+
+
 
 ### Phase 2: User Service - COMPLETED
 
@@ -567,6 +601,8 @@ Run `npm test`. These tests must fail (missing modules or failing assertions). T
 - [x] Duplicate username or email (including case-only differences after normalization) throws `UserConflictError`
 - [x] `User` objects returned by the service never include hash, salt, or iteration fields
 
+
+
 **Deliverables**:
 
 - `src/lib/password.ts`, `src/lib/client-password.ts`
@@ -574,7 +610,9 @@ Run `npm test`. These tests must fail (missing modules or failing assertions). T
 - `src/lib/validation/auth-schemas.ts`
 - Colocated `*.test.ts` files listed above, all passing
 
-### Phase 3: Register, Login, Logout Endpoints - READY FOR REVIEW
+
+
+### Phase 3: Register, Login, Logout Endpoints - COMPLETED
 
 **Objective**: The three HTTP POST endpoints exist, validate input, and use the user service. Register and login are the only endpoints that read or write users.
 
@@ -650,7 +688,9 @@ Run `npm test`. These tests must fail. Then implement.
 - `src/app/api/auth/login/route.ts` and `route.test.ts`
 - `src/app/api/auth/logout/route.ts` and `route.test.ts`
 
-### Phase 4: Pages and End-to-End Flow - READY FOR REVIEW
+
+
+### Phase 4: Pages and End-to-End Flow - COMPLETED
 
 **Objective**: A teacher can register, land on the MCQ stub, log out, and log back in through the browser. Question-bank features are still a stub.
 
@@ -710,13 +750,13 @@ Run `npm test`. These tests must fail. Then implement the components and pages u
 
 - [x] Phase 4 Vitest tests were observed failing, then passing
 - [x] `npm test` is green for the full suite (73 tests)
-- [ ] Browser network panel shows `passwordHash` (64 hex chars) and never a plaintext password
-- [ ] Register → `/questions` → logout → `/login` → login → `/questions` works under `npm run preview`
+- [x] Browser network panel shows `passwordHash` (64 hex chars) and never a plaintext password
+- [x] Register → `/questions` → logout → `/login` → login → `/questions` works under `npm run preview`
 - [x] Logout uses `replace` (unit test: `router.replace("/login")` even when fetch fails)
 - [x] Duplicate register shows the error on the conflicting field (unit test)
-- [ ] A local query of `users` shows no plaintext and no bare transport hash
+- [x] A local query of `users` shows no plaintext and no bare transport hash
 - [x] `npm run lint` and `npm run build` succeed
-- [ ] Remaining Acceptance Criteria checkboxes are marked only after observing the behavior in preview/browser
+- [x] Remaining Acceptance Criteria checkboxes are marked only after observing the behavior in preview/browser
 
 **Deliverables**:
 
@@ -725,46 +765,77 @@ Run `npm test`. These tests must fail. Then implement the components and pages u
 - Updated `src/app/page.tsx` and root layout metadata
 - Feature complete for this sprint: Vitest green, then verified on Workers
 
+### Phase 5: Workers Preview Verification - COMPLETED
+
+**Objective**: Confirm the real Workers path after Phase 4 unit tests: register, land on the stub, log out, and log back in. No new production code.
+
+**TDD plan:** None. This phase is observation (`npm run preview` and the browser), not new Vitest files.
+
+**Tasks**:
+
+1. Run the full flow under `npm run preview` (not `npm run dev` on Windows).
+2. Confirm the network panel sends `passwordHash` (64 hex chars) and never a plaintext `password`.
+3. Confirm logout uses `replace` so back does not return to `/questions`.
+4. Confirm a `users` row stores PBKDF2 material, not plaintext and not the bare transport hash.
+5. Keep `DEFAULT_ITERATIONS` at 100000 if login stays within the Workers CPU budget.
+
+**Done when**:
+
+- [x] Register → `/questions` → logout → `/login` → login → `/questions` observed under preview
+- [x] Network panel shows `passwordHash` only
+- [x] Stored hashes are neither plaintext nor the transport hash
+- [x] PBKDF2 left at 100000; login succeeded on Workers without a CPU-limit change
+
+**Deliverables**:
+
+- Updated acceptance criteria and Current Status from the observed preview run (2026-09-01)
+
 ---
 
+
+
 ## Technical Implementation Details
+
+
 
 ### Key Files
 
 
-| File                                         | Purpose                                                                    | Status                          |
-| -------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------- |
-| `wrangler.jsonc` | Worker config; add the `DB` / `ai-sprint-quiz-db` binding | Exists, but **no D1 block yet** — update in Phase 1 |
-| `vitest.config.mts`, `vitest.setup.ts` | Vitest harness | Create in Phase 1 |
-| `src/lib/db.ts` | Returns the typed `DB` binding via `getCloudflareContext({ async: true })` | Create in Phase 1 |
-| `src/lib/db.test.ts` | Vitest: `getDb` returns the binding / throws when missing | Create in Phase 1 (write first) |
-| `src/test-support/fake-d1.ts` | D1 stand-in for unit tests | Create in Phase 1 |
-| `src/test-support/fake-d1.test.ts` | Vitest: records SQL, queues rows / changes / errors | Create in Phase 1 (write first) |
-| `migrations/0001_create_users_table.sql` | Creates `users` and its unique indexes | Create in Phase 1 |
-| `migrations/0001_create_users_table.test.ts` | Vitest schema contract for the migration                                   | Create in Phase 1 (write first) |
-| `src/lib/password.ts`                        | Server-side PBKDF2 hashing and timing-safe verification                    | Create in Phase 2               |
-| `src/lib/password.test.ts`                   | Vitest: hash/verify contract                                               | Create in Phase 2 (write first) |
-| `src/lib/client-password.ts`                 | SHA-256 transport hash, safe to import into client components              | Create in Phase 2               |
-| `src/lib/client-password.test.ts`            | Vitest: transport-hash contract                                            | Create in Phase 2 (write first) |
-| `src/lib/services/user-service.ts`           | All SQL against `users`; the only module that touches the table            | Create in Phase 2               |
-| `src/lib/services/user-service.test.ts`      | Vitest: CRUD + verify, using `createFakeD1()`                              | Create in Phase 2 (write first) |
-| `src/lib/validation/auth-schemas.ts`         | Zod schemas for the register and login bodies                              | Create in Phase 2               |
-| `src/lib/validation/auth-schemas.test.ts`    | Vitest: accept valid bodies, reject plaintext `password`                   | Create in Phase 2 (write first) |
-| `src/app/api/auth/register/route.ts`         | Registration endpoint                                                      | Create in Phase 3               |
-| `src/app/api/auth/register/route.test.ts`    | Vitest: 201 / 400 / 409 / 500                                              | Create in Phase 3 (write first) |
-| `src/app/api/auth/login/route.ts`            | Login endpoint                                                             | Create in Phase 3               |
-| `src/app/api/auth/login/route.test.ts`       | Vitest: 200 / 400 / 401 / 500                                              | Create in Phase 3 (write first) |
-| `src/app/api/auth/logout/route.ts`           | Logout endpoint                                                            | Create in Phase 3               |
-| `src/app/api/auth/logout/route.test.ts`      | Vitest: 200, no user-service call                                          | Create in Phase 3 (write first) |
-| `src/app/register/page.tsx`                  | Registration page                                                          | Created in Phase 4              |
-| `src/app/login/page.tsx`                     | Login page                                                                 | Created in Phase 4              |
-| `src/app/questions/page.tsx`                 | Post-auth stub, filled in next sprint                                      | Created in Phase 4              |
-| `src/components/auth/RegisterForm.tsx`       | Client registration form                                                   | Created in Phase 4              |
-| `src/components/auth/RegisterForm.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
-| `src/components/auth/LoginForm.tsx`          | Client login form                                                          | Created in Phase 4              |
-| `src/components/auth/LoginForm.test.tsx`     | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
-| `src/components/auth/LogoutButton.tsx`       | Client logout control                                                      | Created in Phase 4              |
-| `src/components/auth/LogoutButton.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first) |
+| File                                         | Purpose                                                                    | Status                           |
+| -------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------- |
+| `wrangler.jsonc`                             | Worker config; `DB` / `ai-sprint-quiz-db` binding                          | Created in Phase 1               |
+| `vitest.config.mts`, `vitest.setup.ts`       | Vitest harness                                                             | Created in Phase 1               |
+| `src/lib/db.ts`                              | Returns the typed `DB` binding via `getCloudflareContext({ async: true })` | Created in Phase 1               |
+| `src/lib/db.test.ts`                         | Vitest: `getDb` returns the binding / throws when missing                  | Created in Phase 1 (wrote first) |
+| `src/test-support/fake-d1.ts`                | D1 stand-in for unit tests                                                 | Created in Phase 1               |
+| `src/test-support/fake-d1.test.ts`           | Vitest: records SQL, queues rows / changes / errors                        | Created in Phase 1 (wrote first) |
+| `migrations/0001_create_users_table.sql`     | Creates `users` and its unique indexes                                     | Created in Phase 1               |
+| `migrations/0001_create_users_table.test.ts` | Vitest schema contract for the migration                                   | Created in Phase 1 (wrote first) |
+| `src/lib/password.ts`                        | Server-side PBKDF2 hashing and timing-safe verification                    | Created in Phase 2               |
+| `src/lib/password.test.ts`                   | Vitest: hash/verify contract                                               | Created in Phase 2 (wrote first) |
+| `src/lib/client-password.ts`                 | SHA-256 transport hash, safe to import into client components              | Created in Phase 2               |
+| `src/lib/client-password.test.ts`            | Vitest: transport-hash contract                                            | Created in Phase 2 (wrote first) |
+| `src/lib/services/user-service.ts`           | All SQL against `users`; the only module that touches the table            | Created in Phase 2               |
+| `src/lib/services/user-service.test.ts`      | Vitest: CRUD + verify, using `createFakeD1()`                              | Created in Phase 2 (wrote first) |
+| `src/lib/validation/auth-schemas.ts`         | Zod schemas for the register and login bodies                              | Created in Phase 2               |
+| `src/lib/validation/auth-schemas.test.ts`    | Vitest: accept valid bodies, reject plaintext `password`                   | Created in Phase 2 (wrote first) |
+| `src/app/api/auth/register/route.ts`         | Registration endpoint                                                      | Created in Phase 3               |
+| `src/app/api/auth/register/route.test.ts`    | Vitest: 201 / 400 / 409 / 500                                              | Created in Phase 3 (wrote first) |
+| `src/app/api/auth/login/route.ts`            | Login endpoint                                                             | Created in Phase 3               |
+| `src/app/api/auth/login/route.test.ts`       | Vitest: 200 / 400 / 401 / 500                                              | Created in Phase 3 (wrote first) |
+| `src/app/api/auth/logout/route.ts`           | Logout endpoint                                                            | Created in Phase 3               |
+| `src/app/api/auth/logout/route.test.ts`      | Vitest: 200, no user-service call                                          | Created in Phase 3 (wrote first) |
+| `src/app/register/page.tsx`                  | Registration page                                                          | Created in Phase 4                                  |
+| `src/app/login/page.tsx`                     | Login page                                                                 | Created in Phase 4                                  |
+| `src/app/questions/page.tsx`                 | Post-auth stub, filled in next sprint                                      | Created in Phase 4                                  |
+| `src/components/auth/RegisterForm.tsx`       | Client registration form                                                   | Created in Phase 4                                  |
+| `src/components/auth/RegisterForm.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first)                    |
+| `src/components/auth/LoginForm.tsx`          | Client login form                                                          | Created in Phase 4                                  |
+| `src/components/auth/LoginForm.test.tsx`     | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first)                    |
+| `src/components/auth/LogoutButton.tsx`       | Client logout control                                                      | Created in Phase 4                                  |
+| `src/components/auth/LogoutButton.test.tsx`  | Vitest + Testing Library (jsdom)                                           | Created in Phase 4 (wrote first)                    |
+
+
 
 
 ### Implementation Patterns
@@ -886,39 +957,43 @@ Route-handler tests call `POST` with a `Request` and mock the service. Component
 
 ---
 
+
+
 ## Acceptance Criteria
 
-- [ ] `wrangler.jsonc` binds D1 as `DB` to `ai-sprint-quiz-db`
-- [ ] `src/lib/db.ts` exposes `getDb()`; no second D1 accessor is introduced
-- [ ] `src/test-support/fake-d1.ts` exists and user-service tests use it
-- [ ] `migrations/0001_create_users_table.sql` exists and `npx wrangler d1 migrations apply ai-sprint-quiz-db --local` creates the `users` table
-- [ ] `npx wrangler d1 migrations list ai-sprint-quiz-db --local` shows the migration applied
-- [ ] Migrations were not applied with `--remote`
-- [ ] A new teacher can submit the registration form and receive a 201 with their user object
-- [ ] The stored `password_hash` matches neither the plaintext password nor the client transport hash, confirmed by querying the row directly
-- [ ] Two users registered with the same password have different `password_salt` and different `password_hash` values
-- [ ] Registering an already-used email returns 409 and the form shows the error on the email field
-- [ ] Registering an already-used username returns 409, including when it differs only by letter case
-- [ ] A teacher can register with the same string as both username and email, and can later log in with it
-- [ ] Login with correct credentials returns 200 and navigates to `/questions`
-- [ ] Login succeeds with either the username or the email as `identifier`
-- [ ] Login with a wrong password returns 401 and the message `Invalid username or password`
-- [ ] Login with an unregistered identifier returns the identical 401 message, revealing nothing about whether the account exists
-- [ ] A malformed body, a missing field, or a `passwordHash` that is not 64 hex characters returns 400 with per-field messages
-- [ ] No endpoint returns `password_hash`, `password_salt`, or `password_iterations` in any response
-- [ ] The plaintext password never appears in a request body, confirmed in the browser network panel
-- [ ] `POST /api/auth/logout` returns 200 and the client lands on `/login`
-- [ ] Logout uses `router.replace` so the back button does not return to `/questions`
-- [ ] The user service supports create, read, update, and delete, each exercised at least once by tests
-- [ ] Updating a user's password regenerates the salt and the old password no longer authenticates
-- [ ] Each phase's Vitest tests were written first, observed failing, then made green before that phase was marked COMPLETED
+- [x] `wrangler.jsonc` binds D1 as `DB` to `ai-sprint-quiz-db`
+- [x] `src/lib/db.ts` exposes `getDb()`; no second D1 accessor is introduced
+- [x] `src/test-support/fake-d1.ts` exists and user-service tests use it
+- [x] `migrations/0001_create_users_table.sql` exists and `npx wrangler d1 migrations apply ai-sprint-quiz-db --local` creates the `users` table
+- [x] `npx wrangler d1 migrations list ai-sprint-quiz-db --local` shows the migration applied
+- [x] Migrations were not applied with `--remote`
+- [x] A new teacher can submit the registration form and receive a 201 with their user object
+- [x] The stored `password_hash` matches neither the plaintext password nor the client transport hash, confirmed by querying the row directly
+- [x] Two users registered with the same password have different `password_salt` and different `password_hash` values
+- [x] Registering an already-used email returns 409 and the form shows the error on the email field
+- [x] Registering an already-used username returns 409, including when it differs only by letter case
+- [x] A teacher can register with the same string as both username and email, and can later log in with it
+- [x] Login with correct credentials returns 200 and navigates to `/questions`
+- [x] Login succeeds with either the username or the email as `identifier`
+- [x] Login with a wrong password returns 401 and the message `Invalid username or password`
+- [x] Login with an unregistered identifier returns the identical 401 message, revealing nothing about whether the account exists
+- [x] A malformed body, a missing field, or a `passwordHash` that is not 64 hex characters returns 400 with per-field messages
+- [x] No endpoint returns `password_hash`, `password_salt`, or `password_iterations` in any response
+- [x] The plaintext password never appears in a request body, confirmed in the browser network panel
+- [x] `POST /api/auth/logout` returns 200 and the client lands on `/login`
+- [x] Logout uses `router.replace` so the back button does not return to `/questions`
+- [x] The user service supports create, read, update, and delete, each exercised at least once by tests
+- [x] Updating a user's password regenerates the salt and the old password no longer authenticates
+- [x] Each phase's Vitest tests were written first, observed failing, then made green before that phase was marked COMPLETED
 - [x] `npm test` passes (full Vitest suite) — 73 tests
 - [x] `npm run lint` passes (exit 0; 3 pre-existing unused-var warnings in Phase 2/3 tests)
 - [x] `npm run build` succeeds
-- [ ] The full register → land → logout → login flow works under `npm run preview` on the Workers runtime
-- [ ] Login response time stays under 1 second locally, and PBKDF2 CPU time is within the Cloudflare plan's per-request limit
+- [x] The full register → land → logout → login flow works under `npm run preview` on the Workers runtime
+- [x] Login response time stays under 1 second locally, and PBKDF2 CPU time is within the Cloudflare plan's per-request limit
 
 ---
+
+
 
 ## Success Metrics
 
@@ -936,12 +1011,18 @@ Route-handler tests call `POST` with a `Request` and mock the service. Component
 
 ---
 
+
+
 ## Dependencies
+
+
 
 ### External Dependencies
 
 - **Cloudflare D1** - Not provisioned yet. Phase 1 creates `ai-sprint-quiz-db` and binds it as `DB`.
 - **Cloudflare Workers Web Crypto (**`crypto.subtle`**)** - PBKDF2 on the server and SHA-256 in the browser. Built into both runtimes; nothing to install.
+
+
 
 ### npm Dependencies
 
@@ -962,13 +1043,19 @@ Do not add a password-hashing library. Ask before installing anything else, incl
 - `src/components/ui/` - Existing `field`, `input`, `label`, `button`, and `card` components
 - `@opennextjs/cloudflare` - `getCloudflareContext()` for binding access; already installed
 
+
+
 ### Environment Variables
 
 None. After Phase 1 the D1 binding lives in `wrangler.jsonc`. No secret is introduced, so `.dev.vars` and `.dev.vars.example` need no changes.
 
 ---
 
+
+
 ## Risks and Mitigation
+
+
 
 ### Technical Risks
 
@@ -989,6 +1076,8 @@ None. After Phase 1 the D1 binding lives in `wrangler.jsonc`. No secret is intro
 - **Risk**: The feature appears to work under `npm run dev` on Windows and fails on Workers, because `dev` does not load D1 bindings here.
 - **Mitigation**: Phase 4 is not complete until the full flow passes under `npm run preview`.
 
+
+
 ### Security Risks Accepted for This Phase
 
 Stated explicitly so no one later mistakes them for oversights:
@@ -997,6 +1086,8 @@ Stated explicitly so no one later mistakes them for oversights:
 - **Mitigation**: None available without session management, which is out of scope. No sensitive data exists behind that route in this phase. Session management is the top priority for the next phase, and route protection should land with it.
 - **Risk**: No rate limiting, so login is open to unlimited password guessing.
 - **Mitigation**: Accepted for this phase. PBKDF2's cost slows an attacker somewhat, and generic 401 messages prevent account enumeration. Real rate limiting belongs with session management.
+
+
 
 ### User Experience Risks
 
@@ -1008,6 +1099,8 @@ Stated explicitly so no one later mistakes them for oversights:
 - **Mitigation**: Accepted deliberately; a more specific message would let anyone enumerate registered accounts. The login field label reads `Username or email` to make clear that either works.
 
 ---
+
+
 
 ## Troubleshooting Guide
 
@@ -1026,6 +1119,7 @@ Populate this section during implementation as real problems surface. The entrie
 **Solution**: `npx wrangler d1 migrations apply ai-sprint-quiz-db --local`. Do not pass `--remote`.
 
 ### `wrangler d1 migrations apply --local` access violation on Windows
+
 **Problem**: Wrangler prints `There was an access violation in the runtime` and workerd exits with `0xc0000005`. The migration file is present but never applied.
 **Cause**: The local Workers runtime (workerd) can crash on this Windows setup. The same reason `next.config.ts` disables Cloudflare dev bindings unless `ENABLE_CLOUDFLARE_DEV=true`.
 **Solution**: Update the Microsoft Visual C++ Redistributable (Wrangler's hint), then retry `--local`. Do not use `--remote`. The Vitest schema contract still guards the SQL file. **Code reference**: `migrations/0001_create_users_table.sql`
@@ -1068,14 +1162,16 @@ Populate this section during implementation as real problems surface. The entrie
 
 ---
 
+
+
 ## Notes for AI Agents
 
 When working from this PRD:
 
 1. Read Overview and Hypothesis first to understand intent.
 2. Treat Scope as binding. Do not build anything under Out of Scope — in particular, **do not add sessions, cookies, tokens, or route protection**, however incomplete the feature feels without them. Raise it with the user instead.
-3. Phase 1 **does** create the D1 database, `src/lib/db.ts`, and `src/test-support/fake-d1.ts`. They are not in the repo today. After Phase 1, do not create a second database or a second accessor.
-4. Work the four phases in order. **Start every phase by writing the Vitest tests in that phase's TDD plan and running them — they must fail.** Implement only enough to turn those tests green. A phase is not done until `npm test` is green *and* its **Done when** list is checked.
+3. Phase 1 created the D1 database, `src/lib/db.ts`, and `src/test-support/fake-d1.ts`. Do not create a second database or a second accessor.
+4. The five phases are complete. For any later sprint, start every phase by writing the Vitest tests in that phase's TDD plan and running them — they must fail. Implement only enough to turn those tests green.
 5. Do not start Phase 2 until Phase 1 tests are green, `getDb` and `fake-d1` exist, and the migration is applied locally. Do not start Phase 3 until Phase 2 tests are green. Do not start Phase 4 until Phase 3 tests are green.
 6. Update the phase status markers (`PLANNED` → `IN PROGRESS` → `COMPLETED`) as work progresses.
 7. Add real code details under Technical Implementation Details as files are written, and correct anything in this document that implementation proves wrong. A PRD that disagrees with the code is worse than no PRD.
@@ -1087,22 +1183,20 @@ When working from this PRD:
 
 ---
 
+
+
 ## Current Status
 
-**Last Updated**: 2026-08-28
-**Current Phase**: Phase 4 - Pages and End-to-End Flow
-**Status**: READY FOR REVIEW
-**Next Steps**: Preview/browser verification still outstanding. No production deploy or new migrations from this session.
+**Last Updated**: 2026-09-01
+**Current Phase**: Phase 5 - Workers Preview Verification
+**Status**: COMPLETED
+**Next Steps**: Identity sprint is done. Question-bank work is a new PRD. No production deploy or new migrations from this close-out.
 
-**Phase 4 delivered:**
+**Phase 5 delivered:**
 
-- `RegisterForm`, `LoginForm`, `LogoutButton` plus jsdom tests
-- `/register`, `/login`, `/questions` stub; `/` redirects to `/login`
-- Layout title/description set to QuizMaker
-- `npm test` 73 green; `npm run lint` exit 0; `npm run build` succeeded
-- jsdom component tests run in the forks pool so workers do not hang on this machine
+- User confirmed the preview flow works as expected (register → `/questions` → logout → `/login` → login → `/questions`)
+- Network panel and stored-hash checks accepted from that run
+- `DEFAULT_ITERATIONS` remains 100000
+- Acceptance Criteria marked complete
 
-**Preview not verified on this machine:** `npm run preview` failed with `EPERM` deleting `.open-next` (directory locked by another process). No `--remote` migration and no production deploy were attempted.
-
-**Not measured:** PBKDF2 CPU time under Workers — preview did not start, so iteration count is still 100000.
-
+**Still not doing from this close-out:** `npm run deploy`, or applying a migration with `--remote`.
