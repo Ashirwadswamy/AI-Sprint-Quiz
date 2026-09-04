@@ -35,15 +35,40 @@ describe("PreviewMcqDialog", () => {
 		expect(screen.getByText("Oxygen")).toBeTruthy();
 	});
 
-	it("marks the correct choice in preview/admin mode", async () => {
+	it("does not reveal the correct answer until a choice is selected", async () => {
 		vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ mcq }), { status: 200 }));
 		render(<PreviewMcqDialog open onOpenChange={vi.fn()} mcqId="mcq-1" />);
 
-		expect(await screen.findByText(/^correct answer$/i)).toBeTruthy();
-		const correctRow = screen.getByText("Carbon dioxide").closest("li");
-		expect(correctRow?.textContent).toMatch(/correct answer/i);
-		const otherRow = screen.getByText("Oxygen").closest("li");
-		expect(otherRow?.textContent).not.toMatch(/correct answer/i);
+		await screen.findByText(/which gas do plants absorb/i);
+		expect(screen.queryByText(/^correct$/i)).toBeNull();
+		expect(screen.queryByText(/^incorrect$/i)).toBeNull();
+	});
+
+	it("shows Correct when the author picks the right choice without writing to the API", async () => {
+		const user = userEvent.setup({ pointerEventsCheck: 0 });
+		vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ mcq }), { status: 200 }));
+		render(<PreviewMcqDialog open onOpenChange={vi.fn()} mcqId="mcq-1" />);
+
+		await screen.findByText(/which gas do plants absorb/i);
+		await user.click(screen.getByRole("radio", { name: /carbon dioxide/i }));
+
+		expect(await screen.findByText(/^correct$/i)).toBeTruthy();
+		expect(screen.queryByText(/^incorrect$/i)).toBeNull();
+		expect(fetch).toHaveBeenCalledTimes(1);
+		expect(fetch).toHaveBeenCalledWith("/api/mcqs/mcq-1");
+	});
+
+	it("shows Incorrect when the author picks a wrong choice and still does not reveal the answer key", async () => {
+		const user = userEvent.setup({ pointerEventsCheck: 0 });
+		vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ mcq }), { status: 200 }));
+		render(<PreviewMcqDialog open onOpenChange={vi.fn()} mcqId="mcq-1" />);
+
+		await screen.findByText(/which gas do plants absorb/i);
+		await user.click(screen.getByRole("radio", { name: /oxygen/i }));
+
+		expect(await screen.findByText(/^incorrect$/i)).toBeTruthy();
+		expect(screen.queryByText(/^correct$/i)).toBeNull();
+		expect(fetch).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not fetch when closed", () => {

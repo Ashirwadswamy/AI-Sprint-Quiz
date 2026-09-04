@@ -1,5 +1,5 @@
 Date created: 2026-09-03
-Date last modified: 2026-09-03
+Date last modified: 2026-09-04
 
 # Multiple Choice Question CRUD - Technical PRD
 
@@ -9,7 +9,7 @@ The previous sprint gave QuizMaker an identity layer: a `users` table, a user se
 
 So a teacher can create an account and log in, and then has nothing to do. There is no way to author a multiple-choice question, no way to see the questions the team has already written, and no way to correct or remove one. The shared question bank that motivated the accounts in the first place does not exist yet.
 
-This sprint builds it. Three tables (`mcqs`, `mcq_choices`, `mcq_attempts`), an MCQ service that owns all SQL against them, HTTP endpoints for create/read/update/delete, and a real `/questions` page: a shadcn table listing every question, a Create button, and a per-row three-dot Action menu offering Edit and Delete. Create and Edit share one page with Save and Cancel.
+This sprint builds it. Three tables (`mcqs`, `mcq_choices`, `mcq_attempts`), an MCQ service that owns all SQL against them, HTTP endpoints for create/read/update/delete, and a real `/questions` page: a shadcn table listing every question, a Create button, and a per-row three-dot Action menu offering Preview, Edit, and Delete. Create and Edit share one page with Save and Cancel.
 
 ---
 
@@ -32,7 +32,8 @@ We believe that giving teachers a table of every question plus a single form to 
 - Zod schemas in `src/lib/validation/mcq-schemas.ts`, validating every request body before use
 - Five route handlers: `GET`/`POST` on `/api/mcqs`, and `GET`/`PUT`/`DELETE` on `/api/mcqs/[id]`
 - `/questions` replaced: a shadcn `Table` of all MCQs with Name, Description, and an Actions column
-- The Actions column is a three-vertical-ellipsis `DropdownMenu` with Edit and Delete Multiple Choice Question
+- The Actions column is a three-vertical-ellipsis `DropdownMenu` with Preview, Edit, and Delete
+- Preview opens a dialog that loads the full question, lets the author select a choice, and shows Correct or Incorrect only after that selection — without revealing the answer key up front and without writing back to the database
 - Delete asks for confirmation in a `Dialog` before it calls the API
 - A Create Multiple Choice Question button on `/questions`
 - `/questions/new` and `/questions/[id]/edit`, both rendering one shared `McqForm` with Save and Cancel
@@ -45,7 +46,7 @@ We believe that giving teachers a table of every question plus a single form to 
 Not built now; expected in a later sprint:
 
 - **An attempts service and attempts endpoints.** The user chose "table and migration only." The schema lands so the next sprint has a target, but no code reads or writes `mcq_attempts` and no row will exist in it when this sprint ends. The original request mentioned attempt-recording endpoints; they were deliberately deferred here.
-- **A quiz-taking UI.** Nothing lets a teacher or student answer a question and see whether they were right.
+- **A quiz-taking UI for students.** Preview is an author try-it dialog only: it does not record attempts, and selecting a choice never updates the stored correct answer.
 - **Session management, and therefore a populated `created_by_user_id`.** The column exists and is nullable. The service accepts an optional `createdByUserId` so the wiring is ready, but no caller can supply it, so every row written this sprint stores `NULL`. This is the same gap the identity PRD flagged as its top follow-up, and it is still open.
 - **Route protection.** `/questions`, `/questions/new`, `/questions/[id]/edit`, and all five endpoints are reachable by anyone with the URL. Unchanged from last sprint, and unfixable without sessions.
 - **Ownership and permissions.** Any caller can edit or delete any question. There is no author check because there is no authenticated author.
@@ -64,7 +65,7 @@ Considered during planning and deliberately removed:
 - **The `sonner` toast component** - Would add an npm dependency for feedback that inline text already provides. Not approved. Errors render inline through `FieldError`, matching the auth forms.
 - **The shadcn `alert-dialog` component** - `dialog` is already installed and is enough for a delete confirmation. Not approved, and a second dialog primitive would be redundant.
 - **The shadcn `textarea` component** - Not approved. Use a plain `<textarea>` carrying the same Tailwind token classes as `Input`. It is a native element with no dependency cost.
-- **The shadcn `radio-group` component** - Not requested. Exactly one correct answer is a native `<input type="radio">` with a shared `name`, which also gives keyboard arrow navigation for free.
+- **The shadcn `radio-group` component** - Initially declined in favor of native radios; later approved and used for both the create/edit correct-answer control and selectable Preview choices.
 - **`react-hook-form`** - `.cursor/rules/shadcn.mdc` says to ask first, and the auth forms already establish plain `useState` plus manual validation. Introducing a second form idiom in the same codebase costs more than it saves.
 - **Server Actions instead of route handlers** - `.cursor/rules/nextjs.mdc` prefers them, but the identity sprint set the HTTP-endpoint pattern and the user asked for endpoints again. Consistency wins.
 - **Diff-based choice updates** - Editing an MCQ deletes its choices and reinserts them. Diffing would keep choice IDs stable but costs real complexity to keep positions contiguous. Delete-and-replace is correct and small; see Database Schema for how attempt history is protected from it.
@@ -310,8 +311,19 @@ Replaces the stub. A Server Component that calls `listMcqs()` directly — the A
 
 - Trigger: an icon-only `Button` (`variant="ghost"`, `size="icon"`) holding `EllipsisVertical` from `lucide-react`, with an accessible name of `Actions for {name}` so tests and screen readers can tell two rows apart
 - `DropdownMenu` items:
+  - **Preview** — opens `PreviewMcqDialog` for that row
   - **Edit** — `router.push('/questions/{id}/edit')`
-  - **Delete Multiple Choice Question** — opens the confirmation dialog, styled with `text-destructive`
+  - **Delete** — opens the confirmation dialog, styled with `text-destructive`
+
+#### Preview dialog
+
+`PreviewMcqDialog` loads `GET /api/mcqs/{id}` when opened. It is an author try-it surface, not a student quiz:
+
+- Choices render as a `RadioGroup` with **no** Correct/Incorrect badge until the author selects one
+- After a selection, only that choice shows **Correct** or **Incorrect**
+- A wrong selection does **not** reveal which other choice is the answer key
+- Selection is local React state only — preview never `PUT`s or otherwise changes the stored correct answer
+- Closing the dialog clears the selection so the next open starts blank again
 
 #### Delete confirmation
 
@@ -353,7 +365,7 @@ Behavior:
 
 ## Implementation Phases
 
-Five phases in order: schema and test harness, then service, then HTTP, then pages, then Workers preview verification.
+Five phases in order: schema and test harness, then service, then HTTP, then pages, then Workers preview verification. All five are COMPLETED.
 
 Already in the repo and **not** to be recreated: the D1 database and `DB` binding, `src/lib/db.ts`, `src/test-support/fake-d1.ts`, `src/lib/validation/http.ts`, and the Vitest harness. This sprint extends `fake-d1.ts` with `batch()` support and adds `mcq-schemas.ts` beside the existing `auth-schemas.ts`.
 
@@ -633,11 +645,11 @@ Run `npm test`. These must fail. Then implement.
 - `src/components/mcq/McqTable.tsx`, `DeleteMcqDialog.tsx`, `McqForm.tsx` and their `*.test.tsx` files
 - `src/app/questions/page.tsx` (rewritten), `src/app/questions/new/page.tsx`, `src/app/questions/[id]/edit/page.tsx`
 
-### Phase 5: Workers Preview Verification - PLANNED
+### Phase 5: Workers Preview Verification - COMPLETED
 
-**Objective**: Confirm the real Workers and D1 path end to end. No new production code.
+**Objective**: Confirm the real Workers and D1 path end to end. Preview UX polish (try-it without revealing the key) landed as a verified follow-up after the browser pass; no schema or API changes.
 
-**TDD plan:** None. This phase is observation under `npm run preview` and the browser, not new Vitest files. `npm run dev` does not load D1 bindings on Windows, so it cannot verify any of this.
+**TDD plan:** None for the Workers observation itself. The Preview try-it tweak has Vitest coverage in `PreviewMcqDialog.test.tsx`. `npm run dev` does not load D1 bindings on Windows, so it cannot verify the end-to-end path.
 
 **Tasks**:
 
@@ -647,19 +659,22 @@ Run `npm test`. These must fail. Then implement.
 4. Edit it again down to two choices and confirm no orphaned `mcq_choices` rows remain.
 5. Delete it through the three-dot menu and confirm the row disappears and the choices are gone from the database.
 6. Query the local database directly to confirm `created_by_user_id` is `NULL` and `mcq_attempts` is empty — both are expected this sprint, and confirming it prevents a later false bug report.
+7. Confirm Preview: no answer key until a choice is selected; Correct/Incorrect feedback afterward; selection does not persist to D1.
 
 **Done when**:
 
-- [ ] Create, list, edit, and delete all observed working under `npm run preview`
-- [ ] Choices persist in position order with exactly one correct
-- [ ] Deleting a question leaves no `mcq_choices` rows behind
-- [ ] `created_by_user_id` is `NULL` on every row, as designed
-- [ ] `mcq_attempts` exists and is empty
-- [ ] Acceptance Criteria checked off from observed behavior, not from code inspection
+- [x] Create, list, edit, and delete all observed working under `npm run preview` (Workers API + browser, 2026-09-03 / 2026-09-04)
+- [x] Choices persist in position order with exactly one correct (edit to 6 positions `1..6` with correct `A3`, then down to 2)
+- [x] Deleting a question leaves no `mcq_choices` rows behind (`leftover_phase5_choices = 0`, `orphan_choices = 0`)
+- [x] `created_by_user_id` is `NULL` on every row, as designed
+- [x] `mcq_attempts` exists and is empty (`attempt_count = 0`)
+- [x] Preview hides the answer key until a selection, then shows Correct/Incorrect without writing (user verified 2026-09-04)
+- [x] Acceptance Criteria checked off from observed behavior, not from code inspection
 
 **Deliverables**:
 
-- Updated Acceptance Criteria and Current Status from the observed preview run
+- Updated Acceptance Criteria and Current Status from the observed preview run (2026-09-04)
+- Final Preview try-it behavior documented and implemented in `PreviewMcqDialog`
 
 ---
 
@@ -683,8 +698,10 @@ Run `npm test`. These must fail. Then implement.
 | `src/app/questions/new/page.tsx`                | Create page                                                   | Created in Phase 4  |
 | `src/app/questions/[id]/edit/page.tsx`          | Edit page; `notFound()` on a missing id                       | Created in Phase 4  |
 | `src/components/mcq/McqTable.tsx`               | Client table with the three-dot Action menu                   | Created in Phase 4  |
+| `src/components/mcq/PreviewMcqDialog.tsx`       | Author try-it preview; Correct/Incorrect after selection only | Created in Phase 4; behavior finalized Phase 5 |
 | `src/components/mcq/DeleteMcqDialog.tsx`        | Delete confirmation                                           | Created in Phase 4  |
 | `src/components/mcq/McqForm.tsx`                | Shared create/edit form with the choice editor                | Created in Phase 4  |
+| `src/components/ui/radio-group.tsx`             | Correct-answer control (form) and selectable Preview choices  | Added in Phase 4 (user-approved) |
 
 ### Implementation Patterns
 
@@ -817,28 +834,29 @@ export default async function QuestionsPage() {
 - [x] Migrations were not applied with `--remote`
 - [x] `mcqs`, `mcq_choices`, and `mcq_attempts` all exist with the columns and constraints in Database Schema
 - [x] `mcq_attempts.mcq_choice_id` uses `ON DELETE SET NULL`, so editing a question cannot destroy attempt history
-- [ ] A teacher can create a question with a name, question text, optional description, and two choices, and it appears in the table
-- [ ] A question can be created with up to six choices, stored with positions 1 through 6
-- [ ] Submitting fewer than two choices, more than six, or any number of correct answers other than one is rejected with a 400 and a visible message
-- [ ] `/questions` lists every question newest first, with Name, Description, and Actions
-- [ ] A null description renders as an em dash rather than an empty cell
-- [ ] The empty state appears when there are no questions
-- [ ] The Actions column is a three-vertical-ellipsis menu offering Edit and Delete Multiple Choice Question
-- [ ] Edit opens `/questions/[id]/edit` pre-filled with the saved values and the correct choice selected
-- [ ] Save persists the edit and returns to `/questions`; Cancel returns without saving and sends no request
-- [ ] Editing down from six choices to two leaves no orphaned `mcq_choices` rows
-- [ ] Delete asks for confirmation, names the question, and removes it plus its choices only after confirming
-- [ ] Cancelling the delete dialog sends no request
-- [ ] A failed delete keeps the dialog open and shows an error rather than closing as if it worked
-- [ ] `GET`, `PUT`, and `DELETE` on an unknown id each return 404 with `Question not found`
-- [ ] No endpoint returns an internal error message to the client
-- [ ] All SQL against the three tables lives in `mcq-service.ts`
-- [ ] Each phase's Vitest tests were written first, observed failing, then made green before that phase was marked COMPLETED
-- [ ] `npm test` passes, including all 73 inherited tests
-- [ ] `npm run lint` passes
-- [ ] `npm run build` succeeds
-- [ ] The full create → list → edit → delete flow works under `npm run preview` on the Workers runtime
-- [ ] Only `dropdown-menu` was added; no new npm dependency was installed
+- [x] A teacher can create a question with a name, question text, optional description, and two choices, and it appears in the table
+- [x] A question can be created with up to six choices, stored with positions 1 through 6 (observed under `npm run preview` PUT, 2026-09-03)
+- [x] Submitting fewer than two choices, more than six, or any number of correct answers other than one is rejected with a 400 and a visible message (API 400 under preview; form message covered by Phase 4 tests)
+- [x] `/questions` lists every question newest first, with Name, Description, and Actions
+- [x] A null description renders as an em dash rather than an empty cell
+- [x] The empty state appears when there are no questions
+- [x] The Actions column is a three-vertical-ellipsis menu offering Preview, Edit, and Delete
+- [x] Preview loads the question without revealing the answer key; after the author selects a choice it shows Correct or Incorrect only, and the selection is not saved
+- [x] Edit opens `/questions/[id]/edit` pre-filled with the saved values and the correct choice selected
+- [x] Save persists the edit and returns to `/questions`; Cancel returns without saving and sends no request
+- [x] Editing down from six choices to two leaves no orphaned `mcq_choices` rows (D1 query after preview PUT/DELETE)
+- [x] Delete asks for confirmation, names the question, and removes it plus its choices only after confirming
+- [x] Cancelling the delete dialog sends no request
+- [x] A failed delete keeps the dialog open and shows an error rather than closing as if it worked
+- [x] `GET`, `PUT`, and `DELETE` on an unknown id each return 404 with `Question not found` (GET observed under preview)
+- [x] No endpoint returns an internal error message to the client (preview run: no 500s; 400/404 use public messages)
+- [x] All SQL against the three tables lives in `mcq-service.ts`
+- [x] Each phase's Vitest tests were written first, observed failing, then made green before that phase was marked COMPLETED
+- [x] `npm test` passes, including all 73 inherited tests
+- [x] `npm run lint` passes
+- [x] `npm run build` succeeds
+- [x] The full create → list → edit → delete flow works under `npm run preview` on the Workers runtime (API + browser verified; user confirmed 2026-09-04)
+- [x] Only approved shadcn components were added (`dropdown-menu`, plus `radio-group` for the form and Preview)
 
 ---
 
@@ -867,13 +885,19 @@ export default async function QuestionsPage() {
 
 **None.** Everything needed is installed: `zod` for validation, `vitest` and Testing Library for tests, `lucide-react` for the ellipsis icon.
 
-One shadcn **component** is generated into the repo, which is not an npm dependency:
+One shadcn **component** was planned at kickoff:
 
 ```bash
 npx shadcn@latest add @shadcn/dropdown-menu
 ```
 
-`AGENTS.md` still applies: ask before installing anything else. `sonner`, `alert-dialog`, `textarea`, `radio-group`, and `react-hook-form` were all considered and declined.
+A second was later approved for the correct-answer control and Preview selection:
+
+```bash
+npx shadcn@latest add @shadcn/radio-group
+```
+
+`AGENTS.md` still applies: ask before installing anything else. `sonner`, `alert-dialog`, `textarea`, and `react-hook-form` remain declined.
 
 ### Internal Dependencies
 
@@ -881,7 +905,7 @@ npx shadcn@latest add @shadcn/dropdown-menu
 - `src/test-support/fake-d1.ts` - Existing D1 fake, extended with `batch()` in Phase 1
 - `src/lib/validation/http.ts` - Existing `toFieldErrors`; reused by the MCQ route handlers
 - `src/lib/services/mcq-service.ts` - Consumed by the route handlers and by the `/questions` server components
-- `src/components/ui/` - Existing `table`, `button`, `card`, `field`, `input`, `label`, `dialog`, plus the new `dropdown-menu`
+- `src/components/ui/` - Existing `table`, `button`, `card`, `field`, `input`, `label`, `dialog`, plus `dropdown-menu` and `radio-group`
 - `src/components/auth/LogoutButton.tsx` - Stays on the rebuilt `/questions` page
 - `users` table - Referenced by `mcqs.created_by_user_id` and `mcq_attempts.user_id`, both nullable
 
@@ -1018,7 +1042,7 @@ When working from this PRD:
 7. Add real code details under Technical Implementation Details as files are written, and correct anything in this document that implementation proves wrong. A PRD that disagrees with the code is worse than no PRD.
 8. Check acceptance criteria off only after observing the behavior. Do not check anything off from code inspection alone.
 9. Add a Troubleshooting entry every time a bug costs more than a few minutes, using the `filepath:line-number` reference format.
-10. Only `dropdown-menu` is approved. Ask before installing any npm package or generating any other component.
+10. Ask before installing any npm package or generating any other shadcn component. Approved for this sprint: `dropdown-menu` and `radio-group`.
 11. Never run `npm run deploy`, and never apply a migration with `--remote`.
 12. Report actual command output when claiming a phase is done. `npm test`, `npm run lint`, and `npm run build` must be run, not assumed. The end-to-end flow must be verified under `npm run preview` after Phase 4.
 
@@ -1026,43 +1050,27 @@ When working from this PRD:
 
 ## Current Status
 
-**Last Updated**: 2026-09-03
-**Current Phase**: Phase 4 - Pages and Components
-**Status**: COMPLETED (awaiting user approval to commit and push)
-**Next Steps**: User verifies Phase 4, then approve commit/push to `feature/mcq-curd`. Phase 5 (Workers preview) starts only after that push.
+**Last Updated**: 2026-09-04
+**Current Phase**: Phase 5 - Workers Preview Verification
+**Status**: COMPLETED
+**Next Steps**: None for this sprint. Feature branch `feature/mcq-curd` carries schema through Workers-verified CRUD plus author Preview try-it.
+
+**Phase 5 delivered:**
+
+- `npm run preview` verified on Workers with local D1 (`http://127.0.0.1:8787`)
+- Create → list → edit (including 6→2 choices) → delete observed; no 500s
+- D1: `created_by_user_id` always `NULL`; `mcq_attempts` empty; no orphaned choices after delete
+- User confirmed the browser UI flow (2026-09-04)
+- Preview finalized: answer key hidden until selection; Correct/Incorrect feedback; selection not persisted (`PreviewMcqDialog` + tests)
+- Acceptance Criteria fully checked from observed behavior
 
 **Phase 4 delivered:**
 
-- `McqTable` with Name / Description / Actions, empty state, and three-dot Edit/Delete menu
-- `DeleteMcqDialog` with confirmation, DELETE, refresh on success, inline error on failure
-- Shared `McqForm` for create and edit (2–6 choices, Save/Cancel)
+- `McqTable` with Name / Description / Actions, empty state, and three-dot Preview/Edit/Delete menu
+- `PreviewMcqDialog`, `DeleteMcqDialog`, shared `McqForm`
 - `/questions`, `/questions/new`, `/questions/[id]/edit`
-- Vitest: 26 Phase 4 component tests green; node 119 + auth jsdom 14 green
+- Vitest: Phase 4 component tests green; node + jsdom suites green
 - `npm run lint` exit 0 (warnings only); `npm run build` succeeded
-
-**Phase 3 delivered:**
-
-- `GET`/`POST` `/api/mcqs` and `GET`/`PUT`/`DELETE` `/api/mcqs/[id]`
-- Zod validation via `createMcqSchema` / `updateMcqSchema`; `toFieldErrors` reused
-- Dynamic route handlers await `params`; 404 for missing ids; 500 messages do not leak internals
-- Vitest: 21 Phase 3 tests observed red (missing route modules), then green; full node suite green
-
-**Phase 2 delivered:**
-
-- `src/lib/validation/mcq-schemas.ts` with `createMcqSchema` / `updateMcqSchema` (2–6 choices, exactly one correct)
-- `src/lib/services/mcq-service.ts` with `createMcq`, `getMcqById`, `listMcqs`, `updateMcq`, `deleteMcq`
-- Creates and choice replacements use `db.batch()`; `is_correct` maps to a boolean; empty description stores `NULL`
-- Vitest: Phase 2 tests observed red (missing modules), then green — 26 new tests; node + jsdom suites still green
-
-**Phase 1 delivered:**
-
-- `createFakeD1().db.batch()` records statements, returns one result per statement, consumes the queue in order, and rejects the whole batch on `queueError`
-- `migrations/0002_create_mcq_tables.sql` creates `mcqs`, `mcq_choices`, and `mcq_attempts`
-- Local apply succeeded; `sqlite_master` contains `users`, `mcqs`, `mcq_choices`, and `mcq_attempts`
-- `src/components/ui/dropdown-menu.tsx` generated by shadcn; no new npm dependency
-- Vitest: 13 Phase 1 tests observed red, then green. Node project 72 passed; jsdom project 14 passed (86 total, including the original 73)
-
-**Still not doing from this close-out:** `npm run deploy`, or applying a migration with `--remote`.
 
 **Phase 3 delivered:**
 
